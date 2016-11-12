@@ -152,3 +152,27 @@ let calculateEcc = function(arr: Array<number>): number {
 
     return ecc;
 }
+
+let getSinValue = function(phase: number, data: boolean): number {
+    let ret: number;
+
+    ret = sinTable[phase];
+
+    if (data) {
+        if (ret > 0) {
+            ret = 32767 - ret;
+            ret = ((ret * ret) / 32767);
+            ret = 32767 - ret;
+        } else if (ret < 0) {
+            ret += 32767;
+            ret = ((ret * ret) / 32767);
+            ret -= 32767;
+        }
+    }
+
+    console.log(ret);
+
+    return ret;
+}
+
+getSinValue(5, false);
