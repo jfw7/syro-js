@@ -1,13 +1,104 @@
-const numOfChannel: number = 2;
-const qamCycle: number = 2;
-const numOfCycle: number = 2;
-const numOfCycleBuf: number = qamCycle * numOfCycle;
+const NUM_OF_CHANNEL: number = 2;
+const QAM_CYCLE: number = 8;
+const NUM_OF_CYCLE: number = 2;
+const NUM_OF_CYCLE_BUF: number = QAM_CYCLE * NUM_OF_CYCLE;
 
-interface SyroChannel {
+class SyroChannel {
     cycleSample: Array<number>;
     lastPhase: number;
     lpfZ: number;
-};
+    generateSingleCycle(writePage: number, dat: number, block: boolean): void {
+        let i: number;
+        let phaseOrg: number;
+        let phase: number;
+        let dat1: number;
+        let dat2: number;
+        let vol: number;
+        let dlt: number;
+        let writePos: number;
+        let writePosLast: number;
+
+        writePos = writePage * QAM_CYCLE;
+        writePosLast = writePos ? (writePos - 1) : (NUM_OF_CYCLE_BUF - 1);
+
+        phaseOrg = (dat >> 1) & 3;
+        phase = phaseOrg * (QAM_CYCLE / 4);
+        vol = (dat & 1);
+        vol = vol ? 16 : 4;
+
+        for (i=0; i < QAM_CYCLE; i++) {
+            dat1 = getSinValue(phase, block);
+            dat1 = (dat1 * vol) / 24;
+            if (! i) {
+                if (phaseOrg != this.lastPhase) {
+                    if (((this.lastPhase & 1) && (phaseOrg & 1) ||
+                        ((this.lastPhase + 1) & 3) == phaseOrg))
+                    {
+                        dat2 = this.cycleSample[writePosLast];
+                        dlt = dat1 - dat2;
+                        dlt = Math.floor(dlt / 3);
+                        dat1 -= dlt;
+                        dat2 += dlt;
+                        this.cycleSample[writePosLast] = dat2;
+                    }
+                }
+            }
+
+            this.cycleSample[writePos++] = dat1;
+            if ((++phase) == QAM_CYCLE) {
+                phase =0;
+            }
+        }
+        this.lastPhase = phaseOrg;
+    }
+    smoothStartMark(writePage: number): void {
+        let writePos: number;
+        let writePosLast: number;
+        let dat1: number;
+        let dat2: number;
+        let dat3: number;
+        let avg: number;
+
+        writePos = writePage * QAM_CYCLE;
+        writePosLast = writePos ? (writePos - 1) : (NUM_OF_CYCLE_BUF - 1);
+
+        dat1 = this.cycleSample[writePosLast];
+        dat2 = this.cycleSample[writePos];
+        dat3 = this.cycleSample[writePos + 1];
+
+        avg = Math.floor((dat1 + dat2 + dat3) / 3);
+
+        dat1 = Math.floor((dat1 + avg) / 2);
+        dat2 = Math.floor((dat2 + avg) / 2);
+        dat3 = Math.floor((dat3 + avg) / 2);
+
+        this.cycleSample[writePosLast] = dat1;
+        this.cycleSample[writePos] = dat2;
+        this.cycleSample[writePos + 1] = dat3;
+    }
+
+    makeGap(writePage: number): void {
+        let ch: number;
+        for (ch = 0; ch < NUM_OF_CHANNEL; ch++) {
+            this.generateSingleCycle(writePage, 1, false);
+        }
+    }
+
+    makeStartMark(writePage: number): void {
+        let ch: number;
+        for (ch = 0; ch < NUM_OF_CHANNEL; ch++) {
+            this.generateSingleCycle(writePage, 5, false);
+            this.smoothStartMark(writePage);
+        }
+    }
+
+    makeChannelInfo(writePage: number): void {
+        let ch: number;
+        for (ch = 0; ch < NUM_OF_CHANNEL; ch++) {
+            this.generateSingleCycle(writePage, ch, true);
+        }
+    }
+}
 
 const eccTable: Array<number> = [
     0x00,0x55,0x56,0x03,0x59,0x0C,0x0F,0x5A,0x5A,0x0F,0x0C,0x59,0x03,0x56,0x55,0x00,
