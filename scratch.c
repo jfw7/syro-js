@@ -24,7 +24,7 @@ typedef long int32_t;
 // SyroFunc_CalculateEcc()
 // int main()
 // {
-// 	static const uint8_t ecc_table[256] = {
+//     static const uint8_t ecc_table[256] = {
 //     0x00,0x55,0x56,0x03,0x59,0x0C,0x0F,0x5A,0x5A,0x0F,0x0C,0x59,0x03,0x56,0x55,0x00,
 //     0x65,0x30,0x33,0x66,0x3C,0x69,0x6A,0x3F,0x3F,0x6A,0x69,0x3C,0x66,0x33,0x30,0x65,
 //     0x66,0x33,0x30,0x65,0x3F,0x6A,0x69,0x3C,0x3C,0x69,0x6A,0x3F,0x65,0x30,0x33,0x66,
@@ -43,71 +43,107 @@ typedef long int32_t;
 //     0x00,0x55,0x56,0x03,0x59,0x0C,0x0F,0x5A,0x5A,0x0F,0x0C,0x59,0x03,0x56,0x55,0x00
 // };
 
-// 	uint8_t pSrc[8] = {1, 2, 3, 4, 5, 6, 7, 255};
-// 	int size = 8;
+//     uint8_t pSrc[8] = {1, 2, 3, 4, 5, 6, 7, 255};
+//     int size = 8;
 
-	
-// 	int i;
-// 	uint8_t ecc_reg1, ecc_reg2, ecc_reg3;
-// 	uint8_t ecc1, ecc2, bitpat_a, bitpat_b;
-// 	uint8_t ci;
-// 	uint32_t ecc;
 
-// 	ecc_reg1 = 0;
-// 	ecc_reg2 = 0;
-// 	ecc_reg3 = 0;	
+//     int i;
+//     uint8_t ecc_reg1, ecc_reg2, ecc_reg3;
+//     uint8_t ecc1, ecc2, bitpat_a, bitpat_b;
+//     uint8_t ci;
+//     uint32_t ecc;
 
-// 	for (i=0; i<size; i++) {
-// 		ci = ecc_table[pSrc[i]];
-// 		ecc_reg1 ^= ci;
-// 		if (ci & 0x40) {
-// 			ecc_reg3 ^= (uint8_t)i;
-// 			ecc_reg2 ^= ~((uint8_t)i);
-// 		}
-// 	}
+//     ecc_reg1 = 0;
+//     ecc_reg2 = 0;
+//     ecc_reg3 = 0;
 
-// 	ecc1 = 0;
-// 	ecc2 = 0;
-// 	bitpat_a = 0x80;
+//     for (i=0; i<size; i++) {
+//         ci = ecc_table[pSrc[i]];
+//         ecc_reg1 ^= ci;
+//         if (ci & 0x40) {
+//             ecc_reg3 ^= (uint8_t)i;
+//             ecc_reg2 ^= ~((uint8_t)i);
+//         }
+//     }
 
-// 	bitpat_b = 0x80;
-// 	for (i=0; i<4; i++) {
-// 		if (ecc_reg3 & bitpat_a) {
-// 			ecc1 |= bitpat_b;
-// 		}
-// 		bitpat_b >>= 1;
-// 		if (ecc_reg2 & bitpat_a) {
-// 			ecc1 |= bitpat_b;
-// 		}
-// 		bitpat_b >>= 1;
-// 		bitpat_a >>= 1;
-// 	}
+//     ecc1 = 0;
+//     ecc2 = 0;
+//     bitpat_a = 0x80;
 
-// 	bitpat_b = 0x80;
-// 	for (i=0; i<4; i++) {
-// 		if (ecc_reg3 & bitpat_a) {
-// 			ecc2 |= bitpat_b;
-// 		}
-// 		bitpat_b >>= 1;
-// 		if (ecc_reg2 & bitpat_a) {
-// 			ecc2 |= bitpat_b;
-// 		}
-// 		bitpat_b >>= 1;
-// 		bitpat_a >>= 1;
-// 	}		
+//     bitpat_b = 0x80;
+//     for (i=0; i<4; i++) {
+//         if (ecc_reg3 & bitpat_a) {
+//             ecc1 |= bitpat_b;
+//         }
+//         bitpat_b >>= 1;
+//         if (ecc_reg2 & bitpat_a) {
+//             ecc1 |= bitpat_b;
+//         }
+//         bitpat_b >>= 1;
+//         bitpat_a >>= 1;
+//     }
 
-// 	ecc_reg1 = (ecc_reg1 << 2) | 3;	
+//     bitpat_b = 0x80;
+//     for (i=0; i<4; i++) {
+//         if (ecc_reg3 & bitpat_a) {
+//             ecc2 |= bitpat_b;
+//         }
+//         bitpat_b >>= 1;
+//         if (ecc_reg2 & bitpat_a) {
+//             ecc2 |= bitpat_b;
+//         }
+//         bitpat_b >>= 1;
+//         bitpat_a >>= 1;
+//     }
 
-// 	ecc = ecc_reg1;
-// 	ecc <<= 8;
-// 	ecc |= ecc2;
-// 	ecc <<= 8;
-// 	ecc |= ecc1;
+//     ecc_reg1 = (ecc_reg1 << 2) | 3;
+
+//     ecc = ecc_reg1;
+//     ecc <<= 8;
+//     ecc |= ecc2;
+//     ecc <<= 8;
+//     ecc |= ecc1;
 
 //    printf ("%lu\n", ecc);
 
-// 	return 0;
+//     return 0;
 // }
+
+
+// SyroFunc_GetSinValue
+// int main()
+// {
+
+//     static const int16_t sin_table[] = {
+//         0,     23169,     32767,     23169,     0,     -23169, -32767, -23169
+//     };
+
+//     int phase = 5;
+//     int bData = 1;
+
+
+//     int32_t ret;
+
+//     ret = sin_table[phase];
+
+//     if (bData) {
+//         if (ret > 0) {
+//             ret = 32767 - ret;
+//             ret = ((ret * ret) / 32767);
+//             ret = 32767 - ret;
+//         } else if (ret < 0) {
+//             ret += 32767;
+//             ret = ((ret * ret) / 32767);
+//             ret -= 32767;
+//         }
+//     }
+
+//     printf ("%d\n",  (int16_t)ret);
+
+//     return (int16_t)ret;
+// }
+
+
 
 int main()
 {
