@@ -106,7 +106,7 @@ let calculateEcc = function(arr: Array<number>): number {
 		eccReg1 ^= ci;
 		if (ci & 0x40) {
 			eccReg3 ^= i;
-			eccReg2 ^= ~(i);
+			eccReg2 ^= 0xff - i
 		}
 	}
 
@@ -141,7 +141,8 @@ let calculateEcc = function(arr: Array<number>): number {
 		bitPatA >>= 1;
 	}
 
-	eccReg1 = (eccReg1 << 2) | 3;
+
+	eccReg1 = ((eccReg1 << 2) & 0xff) | 3;
 
 	ecc = eccReg1;
 	ecc <<= 8;
@@ -149,5 +150,8 @@ let calculateEcc = function(arr: Array<number>): number {
 	ecc <<= 8;
 	ecc |= ecc1;
 
+	console.log(ecc);
 	return ecc;
 }
+
+calculateEcc([1, 2, 3, 4, 5, 6, 7, 255]);
