@@ -170,9 +170,5 @@ let getSinValue = function(phase: number, data: boolean): number {
         }
     }
 
-    console.log(ret);
-
     return ret;
 }
-
-getSinValue(5, false);
