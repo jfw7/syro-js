@@ -201,7 +201,7 @@ const sinTable = [
 ];
 
 // https://gist.github.com/chitchcock/5112270
-let calculateCrc16 = function(arr: Array<number>): number {
+const calculateCrc16 = function(arr: Array<number>): number {
     let crc: number = 0xFFFF;
     let j: number;
     let i: number;
@@ -218,7 +218,7 @@ let calculateCrc16 = function(arr: Array<number>): number {
     return ((crc ^ 0) & 0xFFFF);
 }
 
-let calculateEcc = function(arr: Array<number>): number {
+const calculateEcc = function(arr: Array<number>): number {
     let i: number;
     let eccReg1: number;
     let eccReg2: number;
@@ -286,7 +286,7 @@ let calculateEcc = function(arr: Array<number>): number {
     return ecc;
 }
 
-let getSinValue = function(phase: number, data: boolean): number {
+const getSinValue = function(phase: number, data: boolean): number {
     let ret: number;
 
     ret = sinTable[phase];
@@ -294,18 +294,17 @@ let getSinValue = function(phase: number, data: boolean): number {
     if (data) {
         if (ret > 0) {
             ret = 32767 - ret;
-            ret = ((ret * ret) / 32767);
+            ret = Math.round((ret * ret) / 32767);
             ret = 32767 - ret;
         } else if (ret < 0) {
             ret += 32767;
-            ret = ((ret * ret) / 32767);
+            ret = Math.round((ret * ret) / 32767);
             ret -= 32767;
         }
     }
 
     return ret;
 }
-
 
 /*
 korg_syro_volcasample.h
@@ -454,10 +453,298 @@ class SyroManage {
     frameCountInCycle: number;
 
     longGapCount: number;
+
+    setupNextData(): void {
+        let psth: SyroTxHeader;
+        let block: number;
+    }
 }
 
 class SyroManageSingle {
     data: SyroData;
     // pointer?
     compSize: number;
+}
+
+
+
+
+/*
+korg_syro_comp.h
+*/
+const COMP_BLOCK_LEN: number = 0x800;
+
+/*
+korg_syro_comp.c
+*/
+class ReadSample {
+    // pointer?
+    numOfSample: number;
+    bitLenEff: number;
+    sampleEndian: Endian;
+    sum: number;
+    padding: number;
+    mapBuffer: Uint8Array;
+
+    getPcm(): number {
+        let dat: number;
+        if (this.sampleEndian === Endian.LittleEndian) {
+
+        } else {
+
+        }
+
+        if (this.bitLenEff < 16) {
+
+        } else {
+            this.sum += dat;
+        }
+        return dat;
+    }
+
+    makeMapBuffer(pBitBase: Array<number>, nBitBase: number, type: number): void {
+        let i: number;
+        let mcnt: number;
+        let dat: Array<number>;
+        let datn: number;
+        let bnum: number;
+
+        this.mapBuffer = new Uint8Array(COMP_BLOCK_LEN);
+
+        bnum = 0;
+        mcnt = 0;
+        this.mapBuffer[mcnt++] = this.bitLenEff;
+        this.mapBuffer[mcnt++] = this.bitLenEff;
+        this.mapBuffer[mcnt++] = this.bitLenEff;
+        if (mcnt >= this.numOfSample) {
+            return;
+        }
+
+        dat[3] = this.getPcm();
+        dat[2] = this.getPcm();
+        dat[1] = this.getPcm();
+        for (;;) {
+            dat[0] = this.getPcm();
+            datn = dat[0];
+            if (type) {
+                datn -= (dat[1 * 2 - dat[2]]);
+            }
+            if (datn < 0) {
+                datn = -datn;
+            }
+
+            for (i=0; i < nBitBase; i++) {
+                bnum = pBitBase[i];
+                if (datn < (1 << (bnum - 1))) {
+                    break;
+                }
+            }
+            if (i === nBitBase) {
+                bnum = this.bitLenEff;
+            }
+
+            this.mapBuffer[mcnt++] = bnum;
+            if (mcnt == this.numOfSample) {
+                break;
+            }
+            dat[3] = dat[2];
+            dat[2] = dat[1];
+            dat[1] = dat[0];
+        }
+    }
+
+    makeMapBitConv(numOfSample: number, bitLen: number): void {
+        let i: number;
+        let j: number;
+        let dat: number;
+        let dat1: number;
+        let datLo: number;
+        let datHi: number;
+        let datUse: number;
+        let st: number;
+        let pls: number;
+        let min: number;
+
+        for (i = 0; i < bitLen; i++) {
+            st = -1;
+            for (j= 0; j <= numOfSample; j++) {
+                dat = (j < numOfSample) ? this.mapBuffer[j] : 0;
+                if (dat === i) {
+                    if (st === -1) {
+                         st =j;
+                    }
+                } else {
+                    if (st !== -1) {
+                        dat1 = (st) ? this.mapBuffer[st - 1] : 0;
+                        if (dat < dat1) {
+                            datLo = dat;
+                            datHi = dat1;
+                        } else {
+                            datLo = dat1;
+                            datHi = dat;
+                        }
+                        if (datHi > i) {
+                             datUse = datHi;
+                             if (datLo > i) {
+                                 datUse = datLo;
+                             }
+
+                             pls = (datUse - i) * (j -st);
+                             min = 2 + i;
+                             if (datUse === bitLen) {
+                                 min++;
+                             }
+                             if (datHi === datLo) {
+                                 min += 2 + datLo;
+                                 if (datLo === bitLen) {
+                                     min++;
+                                 }
+                             }
+                             if (min >= pls) {
+                                 for (; st<j; st++) {
+                                     this.mapBuffer[st] = datUse;
+                                 }
+                             }
+                        }
+                        st = -1;
+                    }
+                }
+            }
+        }
+    }
+
+    getCompSizeFromMap(type: number): number {
+        let i: number;
+        let pr: number;
+        let bit: number;
+        let prBit: number;
+        let dat: number;
+        let datLim: number;
+        let bitLen: number;
+        let datH: Array<number>;
+
+        bitLen = this.bitLenEff;
+        datLim = -(1 << (bitLen - 1));
+
+        datH[0] = 0;
+        datH[1] = 0;
+        datH[2] = 0;
+        datH[3] = 0;
+
+        prBit = this.mapBuffer[0];
+        pr = 16 + 2;        // 16=BitLen(4)*4, 2=1st Header
+
+        for (i = 0; i < this.numOfSample; i++) {
+            datH[0] = this.getPcm();
+            bit = this.mapBuffer[i];
+            if ( bit !== prBit) {
+                pr += prBit;
+                if (prBit === bitLen) {
+                    pr++;
+                }
+                pr += 2;
+                prBit = bit;
+            }
+            pr += bit;
+            if ((prBit < bitLen) && type) {
+                dat = datH[0] - (datH[1] * 2 - datH[2]);
+            } else {
+                dat = datH[0];
+            }
+            if (bit === bitLen && dat === datLim) {
+                pr++;
+            }
+            datH[3] = datH[2];
+            datH[2] = datH[1];
+            datH[1] = datH[0];
+        }
+        pr += prBit;
+        if (prBit === bitLen) {
+            pr++;
+        }
+
+        return pr;
+    }
+
+    makeMapSingleType(pBitBase: number, type: number): number {
+        let rp2: ReadSample;
+        let len: number;
+        let li: number;
+        let i: number;
+        let j: number;
+        let bitBase: Array<number>;
+        let bitLen: number;
+
+        bitLen = this.bitLenEff;
+
+        for (i = 0; i < (bitLen - 1); i++) {
+            bitBase[i] = i+1;
+        }
+
+        this.makeMapBuffer(bitBase, bitLen - 1, type);
+        this.makeMapBitConv(this.numOfSample, bitLen);
+
+        let bitBaseScore: Array<number>;
+        let maxBit: number;
+        let maxSc: number;
+        let sc: number;
+
+        for (i = 0; i < 16; i++) {
+            bitBaseScore[i] = 0;
+        }
+        for (li = 0; li < this.numOfSample; li++) {
+            sc = this.mapBuffer[li];
+            if (sc < 16) {
+                bitBaseScore[sc]++;
+            }
+        }
+
+        for (i = 0; i< 4; i++) {
+            maxSc = -1;
+            maxBit = -1;
+            for (j = 0; j < bitLen; j++) {
+                if (bitBaseScore[j] > maxSc) {
+                    maxSc = bitBaseScore[j];
+                    maxBit = j;
+                }
+            }
+            bitBase[i] = maxBit;
+            bitBaseScore[maxBit] = -1;
+        }
+
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++) {
+                if (bitBase[j] > bitBase[j + 1]) {
+                    sc = bitBase[j];
+                    bitBase[j] = bitBase[j + 1];
+                    bitBase[j + 1] = sc;
+                }
+            }
+        }
+
+        this.makeMapBuffer(bitBase, 4, type);
+        this.makeMapBitConv(this.numOfSample, bitLen);
+
+        len = this.getCompSizeFromMap(type);
+        for (i = 0; i < 4; i++) {
+            pBitBase[i] = bitBase[i];
+        }
+        return len;
+    }
+}
+
+class WriteBit {
+    // pointer?
+    bitCount: number;
+    byteCount: number;
+
+    writeBit(dat: number, bit: number): void {
+        dat <<= (32 - bit);
+        dat >>= this.bitCount;
+
+        for (;;) {
+            if (this.bitCount) {
+            }
+        }
+    }
 }
