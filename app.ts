@@ -474,28 +474,38 @@ korg_syro_comp.h
 */
 const COMP_BLOCK_LEN: number = 0x800;
 
+
+let ptrArray: Uint8Array;
+let ptr: number;
+
 /*
 korg_syro_comp.c
 */
 class ReadSample {
-    // pointer?
     numOfSample: number;
     bitLenEff: number;
     sampleEndian: Endian;
     sum: number;
     padding: number;
     mapBuffer: Uint8Array;
+    pBitBase: Array<number>;
 
     getPcm(): number {
         let dat: number;
         if (this.sampleEndian === Endian.LittleEndian) {
-
+            dat = ptrArray[1];
+            dat <<= 8;
+            dat |= ptrArray[ptr];
+            ptr += 2;
         } else {
-
+            dat = ptrArray[ptr++];
+            dat <<= 8;
+            dat |= ptrArray[ptr++];
         }
 
         if (this.bitLenEff < 16) {
-
+            dat /= (1 << (16 - this.bitLenEff));
+            this.sum += (dat << 16 - this.bitLenEff);
         } else {
             this.sum += dat;
         }
@@ -666,7 +676,7 @@ class ReadSample {
         return pr;
     }
 
-    makeMapSingleType(pBitBase: number, type: number): number {
+    makeMapSingleType(type: number): number {
         let rp2: ReadSample;
         let len: number;
         let li: number;
@@ -727,9 +737,31 @@ class ReadSample {
 
         len = this.getCompSizeFromMap(type);
         for (i = 0; i < 4; i++) {
-            pBitBase[i] = bitBase[i];
+            this.pBitBase[i] = bitBase[i];
         }
         return len;
+    }
+
+    makeMap(): number {
+        let i: number;
+        let bestType: number;
+        let len: number;
+        let bestLen: number;
+        let bitBase: Array<number>;
+
+        bestLen = 0;
+        bestType = 0;
+
+        for (i = 0; i < 2; i++) {
+            len = this.makeMapSingleType(i * 2);
+
+            if ((! bestLen) || (len < bestLen)) {
+                bestLen = len;
+                bestType = i;
+            }
+        }
+
+        return bestLen;
     }
 }
 
@@ -744,6 +776,22 @@ class WriteBit {
 
         for (;;) {
             if (this.bitCount) {
+                ptrArray[ptr] |= dat >> 24;
+            } else {
+                ptrArray[ptr] = dat >> 24;
+            }
+            if (this.bitCount + bit >= 8) {
+                bit -= (8 - this.bitCount);
+                this.bitCount = 0;
+                this.byteCount++;
+                ptr++;
+                dat <<= 8;
+            } else {
+                this.bitCount += bit;
+                bit = 0;
+            }
+            if (! bit) {
+                 break;
             }
         }
     }
