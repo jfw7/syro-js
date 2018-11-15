@@ -29,3 +29,6 @@ export const NUM_OF_CHANNEL = 2;
 export const QAM_CYCLE = 8;
 export const NUM_OF_CYCLE = 2;
 export const NUM_OF_CYCLE_BUF = QAM_CYCLE * NUM_OF_CYCLE;
+
+export const LITTLE_ENDIAN = 'LITTLE_ENDIAN';
+export const BIG_ENDIAN = 'BIG_ENDIAN';

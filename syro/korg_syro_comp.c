@@ -32,7 +32,7 @@ typedef struct {
 static void SyroComp_WriteBit(WriteBit *pwp, uint32_t dat, int bit)
 {
 	//-- write bit as big-endian format.(MSB->LSB) --
-	
+
 	dat <<= (32-bit);
 	dat >>= pwp->BitCount;
 
@@ -64,7 +64,7 @@ static void SyroComp_WriteBit(WriteBit *pwp, uint32_t dat, int bit)
 static int32_t SyroComp_GetPcm(ReadSample *prp)
 {
 	int32_t dat;
-	
+
 	if (prp->SampleEndian == LittleEndian) {
 		dat = (int32_t)((int8_t)(prp->ptr[1]));
 		dat <<= 8;
@@ -75,7 +75,7 @@ static int32_t SyroComp_GetPcm(ReadSample *prp)
 		dat <<= 8;
 		dat |= (int32_t)(*prp->ptr++);
 	}
-	
+
 	/*----- convert, 16Bit -> specified bit ----*/
 	if (prp->bitlen_eff < 16) {
 		dat /= (1 << (16 - prp->bitlen_eff));	//replace from  dat >>= (16 - prp->bitlen_eff);
@@ -83,7 +83,7 @@ static int32_t SyroComp_GetPcm(ReadSample *prp)
 	} else {
 		prp->sum += (uint16_t)dat;
 	}
-	
+
 	return dat;
 }
 
@@ -97,9 +97,9 @@ static void SyroComp_MakeMapBuffer(uint8_t *map_buffer, ReadSample *prp, int *pB
 	int32_t dat[4];
 	int32_t datn;
 	int bnum;
-	
+
 	memset(map_buffer, 0, VOLCASAMPLE_COMP_BLOCK_LEN);
-	
+
 	bnum = 0;
 	mcnt = 0;
 	map_buffer[mcnt++] = (uint8_t)prp->bitlen_eff;		/* fix to full-bit 1st~3rd */
@@ -108,7 +108,7 @@ static void SyroComp_MakeMapBuffer(uint8_t *map_buffer, ReadSample *prp, int *pB
 	if (mcnt >= prp->NumOfSample) {
 		return;
 	}
-	
+
 	dat[3] = SyroComp_GetPcm(prp);
 	dat[2] = SyroComp_GetPcm(prp);
 	dat[1] = SyroComp_GetPcm(prp);
@@ -121,7 +121,7 @@ static void SyroComp_MakeMapBuffer(uint8_t *map_buffer, ReadSample *prp, int *pB
 		if (datn < 0) {
 			datn = -datn;
 		}
-		
+
 		for (i=0; i<nBitBase; i++) {
 			bnum = pBitBase[i];
 			if (datn < ( 1 << (bnum-1))) break;
@@ -129,7 +129,7 @@ static void SyroComp_MakeMapBuffer(uint8_t *map_buffer, ReadSample *prp, int *pB
 		if (i == nBitBase) {
 			bnum = prp->bitlen_eff;
 		}
-		
+
 		map_buffer[mcnt++] = (uint8_t)bnum;
 		if (mcnt == prp->NumOfSample) {
 			break;
@@ -151,9 +151,9 @@ static void SyroComp_MakeMap_BitConv(uint8_t *map_buffer, int num_of_sample, int
 	int datlo, dathi, datuse;
 	int st;
 	int pls, min;
-	
+
 	for (i=0; i<bitlen; i++) {
-		
+
 		st = -1;
 		for (j=0; j<(num_of_sample+1); j++) {
 			dat = (j<num_of_sample) ? map_buffer[j] : 0;
@@ -176,7 +176,7 @@ static void SyroComp_MakeMap_BitConv(uint8_t *map_buffer, int num_of_sample, int
 						if (datlo > i) {
 							datuse = datlo;
 						}
-						
+
 						pls = (datuse-i) * (j-st);
 						min = 2 + i;
 						if (datuse==bitlen) {
@@ -220,7 +220,7 @@ static int SyroComp_GetCompSizeFromMap(uint8_t *map_buffer, ReadSample *prp, int
 
 	prbit = map_buffer[0];
 	pr = 16 + 2;		// 16=BitLen(4)*4, 2=1st Header
-	
+
 	for (i=0; i<(int)prp->NumOfSample; i++) {
 		dath[0] = SyroComp_GetPcm(prp);
 		bit = map_buffer[i];
@@ -249,7 +249,7 @@ static int SyroComp_GetCompSizeFromMap(uint8_t *map_buffer, ReadSample *prp, int
 	if (prbit==bitlen) {
 		pr++;
 	}
-	
+
 	return pr;
 }
 
@@ -267,23 +267,23 @@ static int SyroComp_MakeMap_SingleType(uint8_t *map_buffer, ReadSample *prp, int
 	int i, j;
 	int BitBase[16];
 	int bitlen;
-	
+
 	bitlen = prp->bitlen_eff;
-	
+
 	/*------- make map of all bit --------*/
-	
+
 	for (i=0; i<(bitlen-1); i++) {
 		BitBase[i] = i+1;
 	}
 	rp2 = *prp;
 	SyroComp_MakeMapBuffer(map_buffer, &rp2, BitBase, (bitlen-1), type);
 	SyroComp_MakeMap_BitConv(map_buffer, (int)rp2.NumOfSample, bitlen);
-	
+
 	/*------- Check maked map and guess bit -------*/
 	{
 		int BitBaseScore[16];
 		int maxbit, maxsc, sc;
-		
+
 		for (i=0; i<16; i++) {
 			BitBaseScore[i] = 0;
 		}
@@ -295,7 +295,7 @@ static int SyroComp_MakeMap_SingleType(uint8_t *map_buffer, ReadSample *prp, int
 		}
 
 		/*-- select top 4 depth -----*/
-		
+
 		for (i=0; i<4; i++) {
 			maxsc = -1;
 			maxbit = -1;
@@ -308,9 +308,9 @@ static int SyroComp_MakeMap_SingleType(uint8_t *map_buffer, ReadSample *prp, int
 			BitBase[i] = maxbit;
 			BitBaseScore[maxbit] = -1;
 		}
-		
+
 		/*-- sort selected bit (low->high) ----*/
-		
+
 		for (i=0; i<3; i++) {
 			for (j=0; j<3; j++) {
 				if (BitBase[j] > BitBase[j+1]) {
@@ -323,7 +323,7 @@ static int SyroComp_MakeMap_SingleType(uint8_t *map_buffer, ReadSample *prp, int
 	}
 
 	/*-----------------------------------*/
-	
+
 	rp2 = *prp;
 	SyroComp_MakeMapBuffer(map_buffer, &rp2, BitBase, 4, type);
 	SyroComp_MakeMap_BitConv(map_buffer, (int)prp->NumOfSample, bitlen);
@@ -347,19 +347,19 @@ static int SyroComp_MakeMap(uint8_t *map_buffer, ReadSample *prp, int *pBitBase,
 	int besttype;
 	int len, bestlen;
 	int BitBase[4];
-	
+
 	bestlen = 0;
 	besttype = 0;
-	
+
 	for (i=0; i<2; i++) {
 		len = SyroComp_MakeMap_SingleType(map_buffer, prp, BitBase, (i*2));	// type=0 or 2
-		
+
 		if ((!bestlen) || (len < bestlen)) {
 			bestlen = len;
 			besttype = i;
 		}
 	}
-	
+
 	if (pBitBase && ptype) {
 		bestlen = SyroComp_MakeMap_SingleType(map_buffer, prp, pBitBase, (besttype*2));
 		*ptype = (besttype ? 2 : 0);
@@ -369,7 +369,7 @@ static int SyroComp_MakeMap(uint8_t *map_buffer, ReadSample *prp, int *pBitBase,
 }
 
 /*-----------------------------------------------------------------------------
-	Compress 1 block 
+	Compress 1 block
 	 ** Update prp
  -----------------------------------------------------------------------------*/
 static int SyroComp_CompBlock(uint8_t *map_buffer, uint8_t *dest, ReadSample *prp, int *pBitBase, int type)
@@ -381,11 +381,11 @@ static int SyroComp_CompBlock(uint8_t *map_buffer, uint8_t *dest, ReadSample *pr
 	uint8_t hd;
 	WriteBit wp;
 	int BitHead[16];
-	
+
 	wp.ptr = dest;
 	wp.BitCount = 0;
 	wp.ByteCount = 0;
-	
+
 	dath[0] = 0;
 	dath[1] = 0;
 	dath[2] = 0;
@@ -401,13 +401,13 @@ static int SyroComp_CompBlock(uint8_t *map_buffer, uint8_t *dest, ReadSample *pr
 			BitHead[i] = -1;
 		}
 	}
-	
+
 	bitlen = prp->bitlen_eff;
 	datlim = -(1<<(bitlen-1));
-	
+
 	prbit = bitlen;
 	SyroComp_WriteBit(&wp, 3, 2);
-	
+
 	for (i=0; i<(int)prp->NumOfSample; i++) {
 		dath[0] = SyroComp_GetPcm(prp);
 		bit = map_buffer[i];
@@ -447,11 +447,11 @@ static int SyroComp_CompBlock(uint8_t *map_buffer, uint8_t *dest, ReadSample *pr
 	if (prbit == bitlen) {
 		SyroComp_WriteBit(&wp, 1, 1);				/* add 1 bit when full-bit */
 	}
-	
+
 	if (wp.BitCount) {
 		SyroComp_WriteBit(&wp, 0, (8 - wp.BitCount));
 	}
-	
+
 	return wp.ByteCount;
 }
 
@@ -467,18 +467,18 @@ uint32_t SyroComp_GetCompSize(const uint8_t *psrc, uint32_t num_of_sample,
 	uint32_t allsize_byte;
 	uint32_t thissize_bit;
 	uint8_t *map_buffer;
-	
+
 	map_buffer = malloc(VOLCASAMPLE_COMP_BLOCK_LEN);
 	if (!map_buffer) {
 		return 0;
 	}
-	
+
 	rp.ptr = psrc;
 	rp.bitlen_eff = (int)quality;
 	rp.SampleEndian = sample_endian;
-	
+
 	allsize_byte = 0;
-	
+
 	for (;;) {
 		num_of_thissample = VOLCASAMPLE_COMP_BLOCK_LEN;
 		if (num_of_thissample > num_of_sample) {
@@ -486,25 +486,25 @@ uint32_t SyroComp_GetCompSize(const uint8_t *psrc, uint32_t num_of_sample,
 		}
 		rp.NumOfSample = num_of_thissample;
 		thissize_bit = (uint32_t)SyroComp_MakeMap(map_buffer, &rp, NULL, NULL);
-		
+
 		if ((!thissize_bit) || (thissize_bit >= (quality * num_of_thissample))) {
 			//----- use liner ----
 			thissize_bit = (quality * num_of_thissample);
 		}
 		allsize_byte += ((thissize_bit + 7) / 8);
-		
+
 		allsize_byte += 6;		//--- for Header & CRC -----
-		
+
 		rp.ptr += (num_of_thissample * 2);
 		num_of_sample -= num_of_thissample;
-		
+
 		if (!num_of_sample) {
 			break;
 		}
 	}
-	
+
 	free(map_buffer);
-	
+
 	return allsize_byte;
 }
 
@@ -517,8 +517,8 @@ uint32_t SyroComp_GetCompSize(const uint8_t *psrc, uint32_t num_of_sample,
 	  quality = number of effective bit(8~16).
 	  sample_endian = specific endian of source sample(LittleEndian or BigEndian).
  =============================================================================*/
-uint32_t SyroComp_Comp(const uint8_t *psrc, uint8_t *pdest, int num_of_sample, 
-	int quality, Endian sample_endian) 
+uint32_t SyroComp_Comp(const uint8_t *psrc, uint8_t *pdest, int num_of_sample,
+	int quality, Endian sample_endian)
 {
 	ReadSample rp;
 	int BitBase[4];
@@ -533,7 +533,7 @@ uint32_t SyroComp_Comp(const uint8_t *psrc, uint8_t *pdest, int num_of_sample,
 	map_buffer = malloc(VOLCASAMPLE_COMP_BLOCK_LEN);
 	if (!map_buffer) {
 		return 0;
-	}	
+	}
 
 	rp.bitlen_eff = quality;
 	rp.SampleEndian = sample_endian;
@@ -541,7 +541,7 @@ uint32_t SyroComp_Comp(const uint8_t *psrc, uint8_t *pdest, int num_of_sample,
 
 	count = 0;
 	srccount = 0;
-	
+
 	for (;;) {
 		/*------- decide block length ------*/
 		num_of_thissample = VOLCASAMPLE_COMP_BLOCK_LEN;
@@ -550,16 +550,16 @@ uint32_t SyroComp_Comp(const uint8_t *psrc, uint8_t *pdest, int num_of_sample,
 		}
 		rp.NumOfSample = (uint32_t)num_of_thissample;
 		rp.sum = 0;
-		
+
 		prlen = SyroComp_MakeMap(map_buffer, &rp, BitBase, &type);
-		
+
 		if (prlen && (prlen < (num_of_thissample*quality))) {
 			/*----- compressible ------*/
 			*pdest++ = (uint8_t)(num_of_thissample>>8) | (uint8_t)(type<<5);
 			*pdest++ = (uint8_t)num_of_thissample;
 			prlen = SyroComp_CompBlock(map_buffer, pdest+4, &rp, BitBase, type);
 			*pdest++ = (uint8_t)(prlen>>8);
-			*pdest++ = (uint8_t)prlen;			
+			*pdest++ = (uint8_t)prlen;
 			*pdest++ = (uint8_t)(rp.sum >> 8);
 			*pdest++ = (uint8_t)rp.sum;
 			count += (prlen+6);
@@ -575,7 +575,7 @@ uint32_t SyroComp_Comp(const uint8_t *psrc, uint8_t *pdest, int num_of_sample,
 				wb.ptr = (pdest+2);
 				wb.BitCount = 0;
 				wb.ByteCount = 0;
-				
+
 				for (i=0; i<num_of_thissample; i++) {
 					dat = SyroComp_GetPcm(&rp);
 					SyroComp_WriteBit(&wb, (uint32_t)dat, quality);
@@ -599,11 +599,6 @@ uint32_t SyroComp_Comp(const uint8_t *psrc, uint8_t *pdest, int num_of_sample,
 	}
 
 	free(map_buffer);
-	
+
 	return (uint32_t)count;
 }
-
-
-
-
-
